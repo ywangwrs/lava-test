@@ -2,7 +2,7 @@ device_type: aws-ec2_qemu-x86_64
 
 context:
   kernelImg: 'KERNEL_IMG'
-  rootfsImg: 'ROOTFS'
+  rootfsImg: 'EXT4_IMG'
 
 job_name: QEMU X86_64 LAVA smoke test
 

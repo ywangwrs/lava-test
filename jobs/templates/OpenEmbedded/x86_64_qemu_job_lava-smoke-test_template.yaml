@@ -1,0 +1,60 @@
+device_type: aws-ec2_qemu-x86_64
+
+context:
+  kernelImg: 'KERNEL_IMG'
+  rootfsImg: 'ROOTFS'
+
+job_name: QEMU X86_64 LAVA smoke test
+
+timeouts:
+  job:
+    minutes: 90
+  action:
+    minutes: 90
+  connection:
+    minutes: 5
+priority: medium
+visibility: public
+
+actions:
+- deploy:
+    timeout:
+      minutes: 4
+    to: tftp
+    kernel:
+      url: https://sample-videos.com/dxf/1.dxf
+    os: debian
+
+- boot:
+    method: minimal
+    prompts:
+      - '[a-zA-Z0-9\-\_]+@[a-zA-Z0-9\-\_]+:.*?#'
+    transfer_overlay:
+      download_command: wget google.com; wget
+      unpack_command: tar -C / -xvzf
+    timeout:
+      minutes: 6
+    connect: serial
+    auto_login:
+      login_prompt: "login:"
+      username: root
+
+- test:
+    timeout:
+      minutes: 5
+    definitions:
+    - repository:
+        metadata:
+          format: Lava-Test Test Definition 1.0
+          name: smoke-tests-basic
+          description: "Basic system test command for Linaro Ubuntu images"
+        run:
+          steps:
+          - printenv
+      from: inline
+      name: env-dut-inline
+      path: inline/env-dut.yaml
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: smoke-tests

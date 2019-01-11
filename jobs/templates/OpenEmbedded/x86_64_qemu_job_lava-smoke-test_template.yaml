@@ -22,7 +22,7 @@ actions:
       minutes: 4
     to: tftp
     kernel:
-    url: http://downloads.yoctoproject.org/releases/bitbake/bitbake-1.0.tar.gz
+      url: http://downloads.yoctoproject.org/releases/bitbake/bitbake-1.0.tar.gz
     os: debian
 
 - boot:

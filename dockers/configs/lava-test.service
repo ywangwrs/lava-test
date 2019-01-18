@@ -1,0 +1,8 @@
+[Unit]
+Description=Lava test service
+
+[Service]
+ExecStart=/setup.sh
+
+[Install]
+WantedBy=multi-user.target

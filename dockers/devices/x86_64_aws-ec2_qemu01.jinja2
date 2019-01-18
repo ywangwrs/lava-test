@@ -1,0 +1,11 @@
+{% extends 'aws-ec2_qemu-x86_64.jinja2' %}
+
+{% set kernelImg = kernelImg | default('kernel') %}
+{% set rootfsImg = rootfsImg | default('rootfs.ext4') %}
+
+{% set host_ip = '172.31.22.210' %}
+{% set connection_command = 'sh /root/telnet_delay.sh ' + host_ip + ' 16001 15' %}
+{% set qemu_cmd_base = 'ssh -oStrictHostKeyChecking=no ubuntu@' + host_ip + ' sudo' %}
+{% set hard_reset_command = qemu_cmd_base + ' /opt/lava-test/scripts/start_qemu_session.sh ' + host_ip + ' 16001 x86_64 ' + kernelImg + ' ' + rootfsImg %}
+{% set power_off_command =  qemu_cmd_base + ' /opt/lava-test/scripts/kill_qemu_session.sh 16001' %}
+{% set power_on_command = 'echo power_on' %}

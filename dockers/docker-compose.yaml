@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  lava-server:
+    image: lava-test
+    container_name: lava-server
+    ports:
+      - "8080:80"
+      - "69:69"
+      - "5050:5050"
+    volumes:
+      - /opt/tmp:/var/lib/lava/dispatcher/tmp
+      - /opt/postgresql:/var/lib/postgresql
+      - /opt/lava-server:/var/lib/lava-server
+    privileged: true
+    hostname: lava-server
+    networks:
+      - lava-net
+
+  httpd:
+    image: lava-tool-httpd
+    container_name: httpd
+    hostname: lava-tool
+    ports:
+      - "80:80"
+    volumes:
+      - /opt/rsync:/var/www/html
+      - ./configs/apache2.conf:/etc/apache2/apache2.conf
+
+networks:
+  lava-net:
+

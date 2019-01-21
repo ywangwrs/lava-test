@@ -29,8 +29,8 @@ WORKDIR /etc/systemd/system/multi-user.target.wants
 RUN ln -s /lib/systemd/system/lava-test.service ./lava-test.service
 
 # QEMU setup
-ADD libguestfs/boot /boot
-ADD libguestfs/modules /lib/modules
+#ADD libguestfs/boot /boot
+#ADD libguestfs/modules /lib/modules
 #RUN /usr/bin/libguestfs-test-tool
 
 WORKDIR /root/jobs

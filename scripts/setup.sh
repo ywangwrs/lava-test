@@ -14,7 +14,7 @@ if [[ -n "$LAVA_API_TOKEN" ]]; then
     lava-tool auth-add http://lpdtest:${LAVA_API_TOKEN}@localhost
 else
     # Create the admin user
-    lava-server manage users add --superuser --email lpdtest@localhost.com --passwd lpdtest lpdtest
+    echo "from django.contrib.auth.models import User; User.objects.create_superuser('lpdtest', 'admin@localhost.com', 'lpdtest')" | lava-server manage shell
 
     # Set the lpdtest user's API token
     LAVA_API_TOKEN=`lava-server manage tokens add --user lpdtest`

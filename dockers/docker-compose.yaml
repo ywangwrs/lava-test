@@ -6,8 +6,8 @@ services:
     container_name: lava-server
     ports:
       - "8080:80"
-      - "69:69"
-      - "5050:5050"
+      #- "69:69"
+      #- "5050:5050"
     volumes:
       - /opt/tmp:/var/lib/lava/dispatcher/tmp
       - /opt/postgresql:/var/lib/postgresql

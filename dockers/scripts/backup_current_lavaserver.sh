@@ -25,7 +25,9 @@ ls -la ${backup_dir}/postgresql
 
 echo "Backup console logs..."
 
-cd ${backup_dir}/lava-server && sudo tar cf default.tar default && sudo cp default.tar default_`date +%Y%m%d`.tar  && cd -
+docker exec lava-server /bin/bash -c 'cd /var/lib/lava-server && tar cf default.tar default'
+sudo docker cp lava-server:/var/lib/lava-server/default.tar ${backup_dir}/lava-server
+cd ${backup_dir}/lava-server && sudo cp default.tar default_`date +%Y%m%d`.tar  && cd -
 
 echo "DONE"
 

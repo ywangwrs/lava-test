@@ -17,7 +17,7 @@ ADD configs/settings.conf /etc/lava-server/settings.conf
 
 COPY scripts/setup.sh .
 COPY scripts/telnet_delay.sh /root
-COPY jobs/* /root/jobs/
+COPY jobs/samples/* /root/jobs/
 
 # Add device-types and devices
 ADD devices/* /etc/lava-server/dispatcher-config/devices/
@@ -27,11 +27,6 @@ ADD device-types/* /etc/lava-server/dispatcher-config/device-types/
 COPY configs/lava-test.service /lib/systemd/system/
 WORKDIR /etc/systemd/system/multi-user.target.wants
 RUN ln -s /lib/systemd/system/lava-test.service ./lava-test.service
-
-# QEMU setup
-#ADD libguestfs/boot /boot
-#ADD libguestfs/modules /lib/modules
-#RUN /usr/bin/libguestfs-test-tool
 
 WORKDIR /root/jobs
 

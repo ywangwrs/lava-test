@@ -1,13 +1,11 @@
-FROM windriver/lava-base:latest
+FROM lavasoftware/lava-server:2019.01
 
 ENV container docker
 
 RUN find /etc/systemd/system \             
  && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
- sshpass \
- nfs-kernel-server \
- git \
+ lava-tool \
  vim \
  tzdata \
  && apt-get clean

@@ -6,7 +6,6 @@ RUN find /etc/systemd/system \
  && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
  lava-tool \
- vim \
  tzdata \
  && apt-get clean
 
@@ -14,7 +13,6 @@ RUN find /etc/systemd/system \
 ADD configs/settings.conf /etc/lava-server/settings.conf
 
 COPY scripts/setup.sh .
-COPY scripts/telnet_delay.sh /root
 COPY jobs/samples/* /root/jobs/
 
 # Add device-types and devices

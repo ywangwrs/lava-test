@@ -6,7 +6,7 @@ services:
     image: lava-server
     container_name: lava-server
     ports:
-      - "80:80"
+      - "8080:80"
     #    volumes:
     #      - /opt/tmp:/var/lib/lava/dispatcher/tmp
     #      - /opt/postgresql:/var/lib/postgresql
@@ -17,12 +17,15 @@ services:
       - lava-net
 
   lava-dispatcher:
-    image: lavasoftware/lava-dispatcher:2019.01
+    #image: lavasoftware/lava-dispatcher:2019.01
+    image: lava-dispatcher
     container_name: lava-dispatcher
     #privileged: true
-    #hostname: lava-dispatcher
+    hostname: lava-dispatcher
+    volumes:
+      - /opt/dispatcher:/var/lib/lava/dispatcher/tmp
     environment:
-      - DISPATCHER_HOSTNAME=--hostname=calvin-2019.01
+      - DISPATCHER_HOSTNAME=--hostname=dispatcher01
       - LOGGER_URL=tcp://lava-server:5555
       - MASTER_URL=tcp://lava-server:5556
     networks:

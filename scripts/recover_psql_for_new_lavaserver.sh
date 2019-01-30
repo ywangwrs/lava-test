@@ -16,24 +16,24 @@ docker cp scripts/loaddb.sh lava-server:/var/lib/postgresql
 # Inside docker, clean up original lavaserver database and load the backup one
 docker exec lava-server su - postgres -s /bin/bash -c '/var/lib/postgresql/loaddb.sh'
 # Copy backed up database folder to host
-docker cp lava-server:/var/lib/postgresql/10.tar "${volume}/postgresql"
+docker cp lava-server:/var/lib/postgresql/9.6.tar "${volume}/postgresql"
 # On the host side, extract the backup database folder and set its owner properly, 
 # make it ready to be used for volume mapping
 cd "${volume}/postgresql" 
 
-if [ -d 10_bak ]; then 
-    sudo rm -rf 10_bak; 
+if [ -d 9.6_bak ]; then 
+    sudo rm -rf 9.6_bak; 
 fi
-if [ -d 10 ]; then 
-    sudo mv 10 10_bak; 
+if [ -d 9.6 ]; then 
+    sudo mv 9.6 9.6_bak; 
 fi
 
-tar xf 10.tar
+tar xf 9.6.tar
 # Set uid and gid proply, reference: 
 # https://stackoverflow.com/questions/26500270/understanding-user-file-ownership-in-docker-how-to-avoid-changing-permissions-o
-uid_gid=$(docker exec lava-server stat -c "%u:%g" /var/lib/postgresql/10)
+uid_gid=$(docker exec lava-server stat -c "%u:%g" /var/lib/postgresql/9.6)
 
-sudo chown -R "$uid_gid" 10
+sudo chown -R "$uid_gid" 9.6
 cd -
 
 echo "DONE"

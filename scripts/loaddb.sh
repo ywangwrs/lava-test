@@ -27,4 +27,4 @@ createdb lavaserver
 psql lavaserver < lavaserver.db
 
 # Packup database folder and ready to copy it outside of docker
-tar cf 10.tar 10
+tar cf 9.6.tar 9.6

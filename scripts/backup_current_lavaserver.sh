@@ -11,11 +11,11 @@ backup_dir=$1
 
 echo "Backup database inside lava-server..."
 
-docker exec lava-server su - postgres -s /bin/bash -c 'pg_dump lavaserver > /var/lib/postgresql/10/lavaserver.db'
+docker exec lava-server su - postgres -s /bin/bash -c 'pg_dump lavaserver > /var/lib/postgresql/9.6/lavaserver.db'
 
 cp ${backup_dir}/postgresql/lavaserver.db ${backup_dir}/postgresql/lavaserver_`date +%Y%m%d`.db
 
-docker cp lava-server:/var/lib/postgresql/10/lavaserver.db ${backup_dir}/postgresql
+docker cp lava-server:/var/lib/postgresql/9.6/lavaserver.db ${backup_dir}/postgresql
 
 echo "DONE"
 

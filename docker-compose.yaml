@@ -7,10 +7,9 @@ services:
     container_name: lava-server
     ports:
       - "8080:80"
-    #    volumes:
-    #      - /opt/tmp:/var/lib/lava/dispatcher/tmp
-    #      - /opt/postgresql:/var/lib/postgresql
-    #      - /opt/lava-server:/var/lib/lava-server
+    volumes:
+      - /opt/postgresql:/var/lib/postgresql
+      - /opt/lava-server:/var/lib/lava-server
     privileged: true
     hostname: lava-server
     networks:

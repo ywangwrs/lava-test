@@ -1,0 +1,14 @@
+[Unit]
+Description=Start Jenkins service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+
+# Compose up
+ExecStart=/home/ubuntu/start_jenkins.sh
+ExecStop=/home/ubuntu/start_jenkins.sh shutdown
+
+[Install]
+WantedBy=multi-user.target

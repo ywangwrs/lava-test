@@ -1,0 +1,17 @@
+[Unit]
+Description=Start lava-server service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+
+# Remove old containers, images and volumes
+
+
+# Compose up
+ExecStart=/usr/local/bin/docker-compose -f /opt/lava-test/docker-compose.yaml up
+ExecStop=/usr/local/bin/docker-compose -f /opt/lava-test/docker-compose.yaml down -v 
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Start ElasticSearch Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+
+# Compose up
+ExecStart=/bin/bash -c "cd /opt/docker-compose-elasticsearch-kibana && docker-compose up"
+ExecStop=/bin/bash -c "cd /opt/docker-compose-elasticsearch-kibana && docker-compose down"
+
+[Install]
+WantedBy=multi-user.target

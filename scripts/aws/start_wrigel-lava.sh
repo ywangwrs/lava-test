@@ -2,20 +2,22 @@
 
 usage() {
   cat << EOF >&2
-Usage: $0 [-u <ip>] [-p <ip> ] [-i <id>] [-t <type>] [-a <ami>] [-s <tar_file>] [-c <yes|no>]
+Usage: $0 [-u <ip>] [-p <ip> ] [-i <id>] [-t <type>] [-a <ami>] [-b <build_configs>] [-c <yes|no>]
 
- -u <wrigel-lava-instance ip>: public ip
- -p <wrigel-lava-instance ip>: private ip
- -i <wrigel-lava-instance id>: aws ec2 instance id
-   -t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
- -a <AWS EC2 AMI information>: without_sstate (default), with_sstate, AMI_ID
--s <sstate-cache-s3-filename>: empty (default to pyro-sato.tar) or the tar file name will copy to S3
- -c <copy-sstate-cache-to-s3>: yes or no (default)
+-u <wrigel-lava-instance ip>: public ip
+-p <wrigel-lava-instance ip>: private ip
+-i <wrigel-lava-instance id>: aws ec2 instance id
+  -t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
+         -a <AWS EC2 AMI ID>: AMI_ID or empty to use the default AMI
+     -b <build_configs name>: pyro-sato 
+			      qemux86-64_wrlinux_image-glibc-std (default)
+                              genericx86-64_wrlinux_image-glibc-std
+-c <copy-sstate-cache-to-s3>: yes or no (default)
 EOF
   exit 1
 }
 
-while getopts "u:p:i:t:a:s:c:" opt; do
+while getopts "u:p:i:t:a:b:c:" opt; do
   case $opt in
     u) jenkins_server_public_ip=$OPTARG
        ;;
@@ -27,7 +29,7 @@ while getopts "u:p:i:t:a:s:c:" opt; do
        ;;
     a) jenkins_server_instance_ami=$OPTARG
        ;;
-    s) sstate_cache_s3_file_name=$OPTARG
+    b) build_configs=$OPTARG
        ;;
     c) copy_sstate_cache_to_s3=$OPTARG
        ;;
@@ -42,9 +44,24 @@ shift "$((OPTIND - 1))"
 security_key="wrigel-server.pem"
 test_stat_file="/tmp/teststats.json"
 
-if [ -z "$sstate_cache_s3_file_name" ]; then
-    sstate_cache_s3_file_name=pyro-sato.tar
+if [ -z "$build_configs" ]; then
+    build_configs=qemux86-64_wrlinux_image-glibc-std
 fi
+
+sstate_cache_s3_file_name=${build_configs}.tar
+
+if [[ "$build_configs" == 'pyro-sato' ]]; then
+    jenkins_server_instance_ami=ami-0878b5362d98ab9ef
+else
+    jenkins_server_instance_ami=ami-0997aff4346ad4b02
+    #cache_sources_s3_file_name=wrlinux-release-WRLINUX_10_18_BASE.tar
+fi
+
+function get_elasticsearch_url () {
+    elasticsearch_url=$(aws es describe-elasticsearch-domain --domain-name wrigel-report --output json | grep 'vpc":' | tr -d '\n[] "' | sed 's/vpc://g')
+
+    echo "ElasticSearch Server: $elasticsearch_url"
+}
 
 function launch_wrigel_instance() {
     jenkins_server_instance_id=$(./launch_ec2_instance.sh -t "$jenkins_server_instance_type" -a "$jenkins_server_instance_ami") 
@@ -241,8 +258,25 @@ function copy_sstate_cache_from_s3() {
     echo "Done!"
 }
 
+function copy_cache_sources_from_s3() {
+    local copy_cache_sources_cmd="aws s3 cp s3://s3-sstate-cache/${cache_sources_s3_file_name} /opt/tmp/"
+    local extract_cache_sources_cmd1="docker cp /opt/tmp/${cache_sources_s3_file_name} ci_client_1:/home/jenkins/workspace"
+    local extract_cache_sources_cmd2="docker exec ci_client_1 bash -c 'cd /home/jenkins/workspace && tar xf ${cache_sources_s3_file_name}'"
+
+    echo "Copy cache_sources tar file from s3 to /opt/tmp ..."
+    ssh -i wrigel-server.pem -o "StrictHostKeyChecking no" ubuntu@${jenkins_server_public_ip} "$copy_cache_sources_cmd"
+    echo "Extract cache_sources files into docker ..."
+    ssh -i wrigel-server.pem -o "StrictHostKeyChecking no" ubuntu@${jenkins_server_public_ip} "$extract_cache_sources_cmd1"
+    ssh -i wrigel-server.pem -o "StrictHostKeyChecking no" ubuntu@${jenkins_server_public_ip} "$extract_cache_sources_cmd2"
+    echo "Done!"
+}
+
 timestamp=$(date +%Y%m%d_%H%M)
 start_sec=$(date +%s)
+
+# get URL of ElasticSearch instance
+#get_elasticsearch_url
+elasticsearch_url='172.31.16.193:9200'
 
 # get lava-server ip
 #if [ -z $lava_server_ip ]; then
@@ -320,12 +354,26 @@ set_ssh_token_for_lava_dispatcher
 # copy sstate_cache from s3 to local
 copy_sstate_cache_from_s3
 
+# copy cache_sources from s3 to local
+#copy_cache_sources_from_s3
+
 # submit a jenkins job
-RSYNC_DEST_DIR=builds/pyro-sato-${timestamp}
-jenkins_job_submit_cmd="cd /opt/ci-scripts && \
+RSYNC_DEST_DIR=builds/${build_configs}-${timestamp}
+REPORT_SERVER="$elasticsearch_url"
+
+if [[ "$build_configs" == 'pyro-sato' ]]; then
+    configs_file=configs/OpenEmbedded/jenkins_job_configs.yaml
+elif [[ "$build_configs" == 'qemux86-64_wrlinux_image-glibc-std' ]]; then
+    configs_file=configs/WRLinux10/jenkins_job_configs.yaml
+elif [[ "$build_configs" == 'genericx86-64_wrlinux_image-glibc-std' ]]; then
+    configs_file=configs/WRLinux10/jenkins_job_configs.yaml
+fi
+
+jenkins_job_submit_cmd="cd /opt/ci-scripts && git pull && \
 .venv/bin/python3 ./jenkins_job_submit.py \
---configs_file configs/OpenEmbedded/jenkins_job_configs.yaml \
---postprocess_args=RSYNC_DEST_DIR="$RSYNC_DEST_DIR" \
+--configs_file "$configs_file" \
+--build_configs "$build_configs" \
+--postprocess_args=RSYNC_DEST_DIR="$RSYNC_DEST_DIR",REPORT_SERVER="$REPORT_SERVER" \
 --jenkins https://${jenkins_server_public_ip} \
 --test_args=LAVA_SERVER=${lava_server_ip},RETRY=1,LAVA_AUTH_TOKEN=${lava_auth_token}"
 
@@ -333,6 +381,7 @@ echo ========= WRIGEL job submit ==========
 echo -e "$jenkins_job_submit_cmd" | sed 's/--/\\\n--/g'
 echo ======================================
 
+#show_sleep_progress $i 60
 ssh -i wrigel-server.pem -o "StrictHostKeyChecking no" ubuntu@${jenkins_server_public_ip} "$jenkins_job_submit_cmd"
 
 echo "==========Test Started: $timestamp==========="

@@ -4,8 +4,8 @@ usage() {
   cat << EOF >&2
 Usage: $0 [-t <type>] [-a <ami>]
 
-  -t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
--a <AWS EC2 AMI information>: without_sstate (default), with_sstate, AMI_ID
+-t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
+       -a <AWS EC2 AMI ID>: AMI_ID or empty to use the default AMI
 EOF
   exit 1
 }
@@ -29,11 +29,7 @@ if [ -z "$instance_type" ]; then
 fi
 
 if [ -z "$instance_ami" ]; then
-    AMI_ID="ami-0ebe9c5f15d851ddf"   # without sstate
-elif [[ "$instance_ami" == 'with_sstate' ]]; then
-    AMI_ID="ami-0a93b3c96fc3ff1ad"   # with sstate
-elif [[ "$instance_ami" == 'without_sstate' ]]; then
-    AMI_ID="ami-0ebe9c5f15d851ddf"   # without sstate
+    AMI_ID="ami-0878b5362d98ab9ef"   # without sstate
 else
     AMI_ID="$instance_ami"           # given AMI ID
 fi

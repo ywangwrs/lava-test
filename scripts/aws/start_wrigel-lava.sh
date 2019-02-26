@@ -45,7 +45,7 @@ security_key="wrigel-server.pem"
 test_stat_file="/tmp/teststats.json"
 
 if [ -z "$build_configs" ]; then
-    build_configs=qemux86-64_wrlinux_image-glibc-std
+    build_configs=genericx86-64_wrlinux_image-glibc-std
 fi
 
 sstate_cache_s3_file_name=${build_configs}.tar
@@ -53,7 +53,7 @@ sstate_cache_s3_file_name=${build_configs}.tar
 if [[ "$build_configs" == 'pyro-sato' ]]; then
     jenkins_server_instance_ami=ami-0878b5362d98ab9ef
 else
-    jenkins_server_instance_ami=ami-0997aff4346ad4b02
+    jenkins_server_instance_ami=ami-09fe2826f91dd705e
     #cache_sources_s3_file_name=wrlinux-release-WRLINUX_10_18_BASE.tar
 fi
 

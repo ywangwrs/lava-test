@@ -1,4 +1,4 @@
-FROM lavasoftware/lava-dispatcher:2019.01
+FROM lavasoftware/lava-dispatcher:2019.03
 
 ENV container docker
 

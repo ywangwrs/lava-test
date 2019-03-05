@@ -1,4 +1,4 @@
-FROM lavasoftware/lava-server:2019.01
+FROM lavasoftware/lava-server:2019.03
 
 ENV container docker
 
@@ -20,9 +20,9 @@ ADD devices/* /etc/lava-server/dispatcher-config/devices/
 ADD device-types/* /etc/lava-server/dispatcher-config/device-types/
 
 # setup.sh run as a service
-COPY configs/lava-test.service /lib/systemd/system/
-WORKDIR /etc/systemd/system/multi-user.target.wants
-RUN ln -s /lib/systemd/system/lava-test.service ./lava-test.service
+#COPY configs/lava-test.service /lib/systemd/system/
+#WORKDIR /etc/systemd/system/multi-user.target.wants
+#RUN ln -s /lib/systemd/system/lava-test.service ./lava-test.service
 
 WORKDIR /root/jobs
 

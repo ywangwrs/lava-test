@@ -8,8 +8,8 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - /opt/postgresql:/var/lib/postgresql
-      - /opt/lava-server:/var/lib/lava-server
+    - /opt/postgresql:/var/lib/postgresql
+    - /opt/lava-server:/var/lib/lava-server
     privileged: true
     hostname: lava-server
     networks:

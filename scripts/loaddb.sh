@@ -15,7 +15,9 @@ else
 fi
 
 # Terminate current 'lavaserver' database and drop (delete it)
-psql -c "SELECT pg_terminate_backend($pid)FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = 'lavaserver';" && psql -c "DROP DATABASE lavaserver;"
+#psql -c "SELECT pg_terminate_backend($pid)FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = 'lavaserver';" && psql -c "DROP DATABASE lavaserver;"
+pg_ctlcluster 9.6 main restart --force
+dropdb lavaserver
 
 # List postgres database's again, 'lavaserver' should not exist anymore
 psql -c "\l"

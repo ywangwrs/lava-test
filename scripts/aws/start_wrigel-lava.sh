@@ -2,22 +2,24 @@
 
 usage() {
   cat << EOF >&2
-Usage: $0 [-u <ip>] [-p <ip> ] [-i <id>] [-t <type>] [-a <ami>] [-b <build_configs>] [-c <yes|no>]
+Usage: $0 [-u <ip>] [-p <ip> ] [-i <id>] [-t <type>] [-a <ami>] [-b <build_configs>] [-s <suite>] [-d <device>] [-c <yes|no>]
 
 -u <wrigel-lava-instance ip>: public ip
 -p <wrigel-lava-instance ip>: private ip
 -i <wrigel-lava-instance id>: aws ec2 instance id
   -t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
          -a <AWS EC2 AMI ID>: AMI_ID or empty to use the default AMI
+        -s <test suite name>: such as oeqa-default-test, linaro-smoke-test
+	    -d <test device>: aws-ec2_qemu-x86_64 (inside AWS) or remote (hardware in WindRiver)
      -b <build_configs name>: pyro-sato 
-			      qemux86-64_wrlinux_image-glibc-std (default)
-                              genericx86-64_wrlinux_image-glibc-std
+			      qemux86-64_wrlinux_image-glibc-std
+			      genericx86-64_wrlinux_image-glibc-std (default)
 -c <copy-sstate-cache-to-s3>: yes or no (default)
 EOF
   exit 1
 }
 
-while getopts "u:p:i:t:a:b:c:" opt; do
+while getopts "u:p:i:t:a:b:s:d:c:" opt; do
   case $opt in
     u) jenkins_server_public_ip=$OPTARG
        ;;
@@ -31,6 +33,10 @@ while getopts "u:p:i:t:a:b:c:" opt; do
        ;;
     b) build_configs=$OPTARG
        ;;
+    s) test_suite=$OPTARG
+       ;;
+    d) test_device=$OPTARG
+       ;;
     c) copy_sstate_cache_to_s3=$OPTARG
        ;;
     h) usage
@@ -41,11 +47,20 @@ while getopts "u:p:i:t:a:b:c:" opt; do
 done
 shift "$((OPTIND - 1))"
 
+currsec=$(date +%s)
 security_key="wrigel-server.pem"
-test_stat_file="/tmp/teststats.json"
+test_stat_file="/tmp/teststats_${currsec}.json"
 
 if [ -z "$build_configs" ]; then
     build_configs=genericx86-64_wrlinux_image-glibc-std
+fi
+
+if [ -z "$test_suite" ]; then
+    test_suite=linaro-smoke-test
+fi
+
+if [ -z "$test_device" ]; then
+    test_device=aws-ec2_qemu-x86_64
 fi
 
 sstate_cache_s3_file_name=${build_configs}.tar
@@ -161,12 +176,12 @@ function check_jenkins_home() {
 
 function get_lava_auth_token() {
     local get_auth_token_cmd="docker exec lava-server lava-server manage tokens list --user lpdtest"
-    local auth_token=/tmp/auth_token
+    local auth_token=/tmp/auth_token_${currsec}
 
     echo "Getting LAVA auth token ..."
     ssh -i $security_key -o 'StrictHostKeyChecking no' ubuntu@${jenkins_server_public_ip} "$get_auth_token_cmd" > "$auth_token"
     ret=$(cat "$auth_token" | tail -1)
-    lava_auth_token=${ret:2:-2}
+    lava_auth_token=${ret:2:-3}
 
     if [ -z "$lava_auth_token" ]; then
         echo "Can't get auth token, exit!"
@@ -223,6 +238,10 @@ function check_test_result() {
     wget -q --no-check-certificate "$test_stat_url" -O "$test_stat_file"
 
     if [ -f "$test_stat_file" ]; then
+	test_result=$(cat "$test_stat_file" |grep 'test_device": "remote"')
+	if [ -n "$test_result" ]; then
+            cat "$test_stat_file"
+        fi
 	test_result=$(cat "$test_stat_file" |grep test_result)
 	if [ -n "$test_result" ]; then
             cat "$test_stat_file"
@@ -375,7 +394,8 @@ jenkins_job_submit_cmd="cd /opt/ci-scripts && git pull && \
 --build_configs "$build_configs" \
 --postprocess_args=RSYNC_DEST_DIR="$RSYNC_DEST_DIR",REPORT_SERVER="$REPORT_SERVER" \
 --jenkins https://${jenkins_server_public_ip} \
---test_args=LAVA_SERVER=${lava_server_ip},RETRY=1,LAVA_AUTH_TOKEN=${lava_auth_token}"
+--test "$test_suite" \
+--test_args=LAVA_SERVER=${lava_server_ip},RETRY=1,LAVA_AUTH_TOKEN=${lava_auth_token},TEST_DEVICE=$test_device"
 
 echo ========= WRIGEL job submit ==========
 echo -e "$jenkins_job_submit_cmd" | sed 's/--/\\\n--/g'

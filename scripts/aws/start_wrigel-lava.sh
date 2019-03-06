@@ -2,19 +2,23 @@
 
 usage() {
   cat << EOF >&2
-Usage: $0 [-u <ip>] [-p <ip> ] [-i <id>] [-t <type>] [-a <ami>] [-b <build_configs>] [-s <suite>] [-d <device>] [-c <yes|no>]
+Usage: $0 [-t <type>] [-a <ami>] 
+          [-b <build_configs>] [-s <suite>] [-d <device>] [-c <yes|no>]
+          [-u <ip>] [-p <ip> ] [-i <id>]
 
--u <wrigel-lava-instance ip>: public ip
--p <wrigel-lava-instance ip>: private ip
--i <wrigel-lava-instance id>: aws ec2 instance id
   -t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
          -a <AWS EC2 AMI ID>: AMI_ID or empty to use the default AMI
-        -s <test suite name>: such as oeqa-default-test, linaro-smoke-test
-	    -d <test device>: aws-ec2_qemu-x86_64 (inside AWS) or remote (hardware in WindRiver)
+	-s <test suite name>: linaro-smoke-test (default)
+                              oeqa-default-test
+	    -d <test device>: aws-ec2_qemu-x86_64 (default, inside AWS) 
+                              remote (hardware in WindRiver)
      -b <build_configs name>: pyro-sato 
 			      qemux86-64_wrlinux_image-glibc-std
 			      genericx86-64_wrlinux_image-glibc-std (default)
 -c <copy-sstate-cache-to-s3>: yes or no (default)
+-u <wrigel-lava-instance ip>: public ip
+-p <wrigel-lava-instance ip>: private ip
+-i <wrigel-lava-instance id>: aws ec2 instance id
 EOF
   exit 1
 }
@@ -68,7 +72,7 @@ sstate_cache_s3_file_name=${build_configs}.tar
 if [[ "$build_configs" == 'pyro-sato' ]]; then
     jenkins_server_instance_ami=ami-0878b5362d98ab9ef
 else
-    jenkins_server_instance_ami=ami-09fe2826f91dd705e
+    jenkins_server_instance_ami=ami-0b403931f5e8e0cad  #wrigel-lava.docker.2019.03
     #cache_sources_s3_file_name=wrlinux-release-WRLINUX_10_18_BASE.tar
 fi
 

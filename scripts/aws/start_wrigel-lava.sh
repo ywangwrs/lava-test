@@ -3,8 +3,8 @@
 usage() {
   cat << EOF >&2
 Usage: $0 [-t <type>] [-a <ami>] 
-          [-b <build_configs>] [-s <suite>] [-d <device>] [-c <yes|no>]
-          [-u <ip>] [-p <ip> ] [-i <id>]
+                              [-b <build_configs>] [-s <suite>] [-d <device>] [-c <yes|no>]
+                              [-u <ip>] [-p <ip> ] [-i <id>]
 
   -t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
          -a <AWS EC2 AMI ID>: AMI_ID or empty to use the default AMI
@@ -23,7 +23,7 @@ EOF
   exit 1
 }
 
-while getopts "u:p:i:t:a:b:s:d:c:" opt; do
+while getopts "u:p:i:t:a:b:s:d:c:h:" opt; do
   case $opt in
     u) jenkins_server_public_ip=$OPTARG
        ;;

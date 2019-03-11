@@ -9,7 +9,7 @@ local_images_http_link=http://yow-lpdtest.wrs.com/tftpboot/awsbuilds
 LAVA_JOB_SUBMIT_SCRIPT=./launch_lava_test.sh
 images_access_remote_base=/net/yow-lpdtest/var/lib/tftpboot/awsbuilds
 LAVA_USER=lpdtest
-LAVA_SERVER=yow-lpdtest.wrs.com:8080
+LAVA_SERVER=yow-lab-simics16.wrs.com:8080
 TEST_SUITE=linaro-smoke-test
 TEST_DEVICE=x86
 RETRY=0
@@ -17,7 +17,19 @@ EMAIL=yang.wang@windriver.com
 
 currsec=$(date +%s)
 teststat_file=/tmp/teststats_${currsec}.json
-ELASTICSEARCH_SERVER="54.191.252.187"
+ELASTICSEARCH_SERVER=""
+
+function get_es_server_public_ip() {
+    local info=$(./get_ec2_instances_info.sh | grep "ElasticSearchServer")
+    local array=($info)
+    ELASTICSEARCH_SERVER="${array[4]}"
+    
+    if [ -z "$ELASTICSEARCH_SERVER" ]; then
+        echo "Can't find running ElasticSearch server in AWS!"
+    else
+        echo "ElasticSearch Searver IP = $ELASTICSEARCH_SERVER"
+    fi
+}
 
 function report() {
     local remote_report_file=/tmp/${requesting_images_folder}_teststats.json
@@ -133,6 +145,8 @@ function show_sleep_progress() {
 }
 
 function main() {
+    get_es_server_public_ip
+
     while true; do
 	echo "$(date +'%Y-%m-%d %H:%M'):"
         check_s3_quests

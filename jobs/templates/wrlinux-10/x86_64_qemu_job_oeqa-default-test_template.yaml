@@ -1,4 +1,4 @@
-device_type: mxe5400-qemu-x86_64
+device_type: aws-ec2_qemu-x86_64
 
 context:
   kernelImg: 'KERNEL_IMG'

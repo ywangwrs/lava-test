@@ -69,7 +69,7 @@ if [ -z "$LAVA_USER" ]; then
 fi
 
 if [ -z "$LAVA_SERVER" ]; then
-    LAVA_SERVER=yow-lpdtest.wrs.com:8080
+    LAVA_SERVER=yow-lab-simics16.wrs.com:8080
 fi
 
 if [ -z "$AUTH_TOKEN" ]; then

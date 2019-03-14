@@ -3,18 +3,22 @@
 usage() {
   cat << EOF >&2
 Usage: $0 [-t <type>] [-a <ami>] 
-                              [-b <build_configs>] [-s <suite>] [-d <device>] [-c <yes|no>]
+                              [-v <ver>] [-b <build_configs>] [-s <suite>] [-d <device>] [-c <yes|no>]
                               [-u <ip>] [-p <ip> ] [-i <id>]
 
   -t <AWS EC2 instance type>: instance type, such as c5.xlarge (default), c5.2xlarge ...
          -a <AWS EC2 AMI ID>: AMI_ID or empty to use the default AMI
+        -v <product version>: 10.18 (default)
+                              10.17
+                              9
 	-s <test suite name>: linaro-smoke-test (default)
                               oeqa-default-test
 	    -d <test device>: aws-ec2_qemu-x86_64 (default, inside AWS) 
                               remote (hardware in WindRiver)
      -b <build_configs name>: pyro-sato 
-			      qemux86-64_wrlinux_image-glibc-std
-			      genericx86-64_wrlinux_image-glibc-std (default)
+			      genericx86-64_wrlinux-image-glibc-std (default)
+			      qemux86-64_wrlinux-image-glibc-std
+			      qemux86-64_wrlinux_image-glibc-cgl
 -c <copy-sstate-cache-to-s3>: yes or no (default)
 -u <wrigel-lava-instance ip>: public ip
 -p <wrigel-lava-instance ip>: private ip
@@ -23,7 +27,7 @@ EOF
   exit 1
 }
 
-while getopts "u:p:i:t:a:b:s:d:c:h:" opt; do
+while getopts "u:p:i:t:a:b:s:d:c:v:h:" opt; do
   case $opt in
     u) jenkins_server_public_ip=$OPTARG
        ;;
@@ -43,6 +47,8 @@ while getopts "u:p:i:t:a:b:s:d:c:h:" opt; do
        ;;
     c) copy_sstate_cache_to_s3=$OPTARG
        ;;
+    v) product_version=$OPTARG
+       ;;
     h) usage
        ;;
     *) usage
@@ -51,12 +57,19 @@ while getopts "u:p:i:t:a:b:s:d:c:h:" opt; do
 done
 shift "$((OPTIND - 1))"
 
-currsec=$(date +%s)
+timestamp=$(date +%Y%m%d_%H%M)
+start_sec=$(date +%s)
 security_key="wrigel-server.pem"
-test_stat_file="/tmp/teststats_${currsec}.json"
+test_stat_file="/tmp/teststats_${start_sec}.json"
+awsbuilds=/net/awsbuilds
+local_log_folder=${awsbuilds}/${timestamp}-${product_version}-${build_configs}
+
+# get URL of ElasticSearch instance
+#get_elasticsearch_url
+elasticsearch_url='172.31.16.193:9200'
 
 if [ -z "$build_configs" ]; then
-    build_configs=genericx86-64_wrlinux_image-glibc-std
+    build_configs=genericx86-64_wrlinux-image-glibc-std
 fi
 
 if [ -z "$test_suite" ]; then
@@ -67,14 +80,23 @@ if [ -z "$test_device" ]; then
     test_device=aws-ec2_qemu-x86_64
 fi
 
-sstate_cache_s3_file_name=${build_configs}.tar
+sstate_cache_s3_file_name=${product_version}_${build_configs}.tar
 
 if [[ "$build_configs" == 'pyro-sato' ]]; then
     jenkins_server_instance_ami=ami-0878b5362d98ab9ef
 else
     jenkins_server_instance_ami=ami-0b403931f5e8e0cad  #wrigel-lava.docker.2019.03
-    #cache_sources_s3_file_name=wrlinux-release-WRLINUX_10_18_BASE.tar
 fi
+
+function insert_key_to_json() {
+    local tmp_file=/tmp/tmp_report_${start_sec}.json
+    json_file=$1
+    object=$2
+    key=$3
+    value=$4
+
+    jq ".$object |= . + {\"$key\": \"$value\"}" $json_file > $tmp_file && cp -f $tmp_file $json_file
+}
 
 function get_elasticsearch_url () {
     elasticsearch_url=$(aws es describe-elasticsearch-domain --domain-name wrigel-report --output json | grep 'vpc":' | tr -d '\n[] "' | sed 's/vpc://g')
@@ -180,7 +202,7 @@ function check_jenkins_home() {
 
 function get_lava_auth_token() {
     local get_auth_token_cmd="docker exec lava-server lava-server manage tokens list --user lpdtest"
-    local auth_token=/tmp/auth_token_${currsec}
+    local auth_token=/tmp/auth_token_${start_sec}
 
     echo "Getting LAVA auth token ..."
     ssh -i $security_key -o 'StrictHostKeyChecking no' ubuntu@${jenkins_server_public_ip} "$get_auth_token_cmd" > "$auth_token"
@@ -229,6 +251,17 @@ function get_number_of_running_dockers() {
     number_of_running_dockers=$(ssh -i $security_key -o 'StrictHostKeyChecking no' ubuntu@${jenkins_server_public_ip} $docker_cmd)
 
     echo "$number_of_running_dockers"
+}
+
+function download_logs() {
+    local RSYNC_DEST_DIR=$1
+    local logs_url="https://${jenkins_server_public_ip}/${RSYNC_DEST_DIR}/"
+    local wget_options='-q --no-check-certificate --no-parent --recursive --relative --level=2 --no-directories'
+
+    mkdir "$local_log_folder"
+    echo "wget $wget_options -P $local_log_folder -A '*.log,*.json,*.yaml,*.conf' $logs_url"
+    wget -q --no-check-certificate --no-parent --recursive --relative --level=2 --no-directories -P "$local_log_folder" -A "*.log,*.json,*.yaml,*.conf" "$logs_url"
+    ls -la "$local_log_folder"
 }
 
 function check_test_result() {
@@ -293,13 +326,6 @@ function copy_cache_sources_from_s3() {
     ssh -i wrigel-server.pem -o "StrictHostKeyChecking no" ubuntu@${jenkins_server_public_ip} "$extract_cache_sources_cmd2"
     echo "Done!"
 }
-
-timestamp=$(date +%Y%m%d_%H%M)
-start_sec=$(date +%s)
-
-# get URL of ElasticSearch instance
-#get_elasticsearch_url
-elasticsearch_url='172.31.16.193:9200'
 
 # get lava-server ip
 #if [ -z $lava_server_ip ]; then
@@ -374,32 +400,43 @@ set_dispatcher_ip
 # set ssh token for lava-server so that lava-device can run commands from host
 set_ssh_token_for_lava_dispatcher
 
-# copy sstate_cache from s3 to local
-copy_sstate_cache_from_s3
-
-# copy cache_sources from s3 to local
-#copy_cache_sources_from_s3
-
 # submit a jenkins job
 RSYNC_DEST_DIR=builds/${build_configs}-${timestamp}
 REPORT_SERVER="$elasticsearch_url"
 
 if [[ "$build_configs" == 'pyro-sato' ]]; then
     configs_file=configs/OpenEmbedded/jenkins_job_configs.yaml
-elif [[ "$build_configs" == 'qemux86-64_wrlinux_image-glibc-std' ]]; then
-    configs_file=configs/WRLinux10/jenkins_job_configs.yaml
-elif [[ "$build_configs" == 'genericx86-64_wrlinux_image-glibc-std' ]]; then
-    configs_file=configs/WRLinux10/jenkins_job_configs.yaml
 fi
+
+if [[ "$product_version" == '10.18' ]]; then
+    cache_sources_s3_file_name=wrlinux-release-WRLINUX_10_18_BASE.tar
+    configs_file=configs/WRLinux10/jenkins_job_configs.yaml
+    build_options='--branch WRLINUX_10_18_BASE --build_configs_file configs/WRLinux10/combos-WRLINUX_10_18_BASE.yaml'
+elif [[ "$product_version" == '10.17' ]]; then
+    cache_sources_s3_file_name=wrlinux-release-WRLINUX_10_17_BASE.tar
+    configs_file=configs/WRLinux10/jenkins_job_configs.yaml
+    build_options='--branch WRLINUX_10_17_BASE --build_configs_file configs/WRLinux10/combos-WRLINUX_10_17_BASE.yaml'
+elif [[ "$product_version" == '9' ]]; then
+    cache_sources_s3_file_name=wrlinux-release-WRLINUX_9_BASE.tar
+    configs_file=configs/WRLinux9/jenkins_job_configs.yaml
+    build_options='--branch WRLINUX_9_BASE --build_configs_file configs/WRLinux9/combos-WRLINUX_9_BASE.yaml'
+fi
+
+# copy sstate_cache from s3 to local
+copy_sstate_cache_from_s3
+
+# copy cache_sources from s3 to local
+copy_cache_sources_from_s3
 
 jenkins_job_submit_cmd="cd /opt/ci-scripts && git pull && \
 .venv/bin/python3 ./jenkins_job_submit.py \
---configs_file "$configs_file" \
---build_configs "$build_configs" \
---postprocess_args=RSYNC_DEST_DIR="$RSYNC_DEST_DIR",REPORT_SERVER="$REPORT_SERVER" \
+--configs_file ${configs_file} \
+${build_options} \
+--build_configs ${build_configs} \
+--postprocess_args=RSYNC_DEST_DIR=${RSYNC_DEST_DIR},REPORT_SERVER=${REPORT_SERVER},HTTP_ROOT=http://${jenkins_server_public_ip} \
 --jenkins https://${jenkins_server_public_ip} \
---test "$test_suite" \
---test_args=LAVA_SERVER=${lava_server_ip},RETRY=1,LAVA_AUTH_TOKEN=${lava_auth_token},TEST_DEVICE=$test_device"
+--test ${test_suite} \
+--test_args=LAVA_SERVER=${lava_server_ip},RETRY=1,LAVA_AUTH_TOKEN=${lava_auth_token},TEST_DEVICE=${test_device}"
 
 echo ========= WRIGEL job submit ==========
 echo -e "$jenkins_job_submit_cmd" | sed 's/--/\\\n--/g'
@@ -415,6 +452,7 @@ do
     ret=$(check_test_result "$RSYNC_DEST_DIR")
     if [ -n "$ret" ]; then
 	echo "$ret"
+	download_logs "$RSYNC_DEST_DIR"
 	break
     fi
     show_sleep_progress $i 60
@@ -447,3 +485,10 @@ echo "   - Used            : $duration minutes"
 echo "   - Estimated price : \$$price"
 echo "==========Test Ended: $timestamp==========="
 
+insert_key_to_json "$test_stat_file" aws ec2_type "$jenkins_server_instance_type"
+insert_key_to_json "$test_stat_file" aws price_per_hour "$ec2_pricing"
+insert_key_to_json "$test_stat_file" aws time_in_min "$duration"
+insert_key_to_json "$test_stat_file" aws cost "$price"
+
+cp "$test_stat_file" "$local_log_folder"/teststats.json
+ls -la "$local_log_folder"/teststats.json

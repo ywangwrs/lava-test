@@ -13,12 +13,15 @@ Usage: $0 [-t <type>] [-a <ami>]
                               9
 	-s <test suite name>: linaro-smoke-test (default)
                               oeqa-default-test
+                              cgl-oeqa-default-test
+                              cgl-vrf-test
 	    -d <test device>: aws-ec2_qemu-x86_64 (default, inside AWS) 
                               remote (hardware in WindRiver)
      -b <build_configs name>: pyro-sato 
 			      genericx86-64_wrlinux-image-glibc-std (default)
 			      qemux86-64_wrlinux-image-glibc-std
-			      qemux86-64_wrlinux_image-glibc-cgl
+			      qemux86-64_wrlinux-image-glibc-cgl
+                              qemux86-64_world
 -c <copy-sstate-cache-to-s3>: yes or no (default)
 -u <wrigel-lava-instance ip>: public ip
 -p <wrigel-lava-instance ip>: private ip
@@ -62,7 +65,9 @@ start_sec=$(date +%s)
 security_key="wrigel-server.pem"
 test_stat_file="/tmp/teststats_${start_sec}.json"
 awsbuilds=/net/awsbuilds
+awsbuilds_url=http://yow-lpdtest.wrs.com/tftpboot/awsbuilds
 local_log_folder=${awsbuilds}/${timestamp}-${product_version}-${build_configs}
+local_log_folder_url=${awsbuilds_url}/${timestamp}-${product_version}-${build_configs}
 
 # get URL of ElasticSearch instance
 #get_elasticsearch_url
@@ -255,13 +260,19 @@ function get_number_of_running_dockers() {
 
 function download_logs() {
     local RSYNC_DEST_DIR=$1
-    local logs_url="https://${jenkins_server_public_ip}/${RSYNC_DEST_DIR}/"
-    local wget_options='-q --no-check-certificate --no-parent --recursive --relative --level=2 --no-directories'
-
+    logs_url="https://${jenkins_server_public_ip}/${RSYNC_DEST_DIR}/"
     mkdir "$local_log_folder"
-    echo "wget $wget_options -P $local_log_folder -A '*.log,*.json,*.yaml,*.conf' $logs_url"
-    wget -q --no-check-certificate --no-parent --recursive --relative --level=2 --no-directories -P "$local_log_folder" -A "*.log,*.json,*.yaml,*.conf" "$logs_url"
+
+    if [[ "$test_device" == 'remote' ]]; then
+        download_files='*.log,*.json,*.yaml,*.conf,*Image,*tar.bz2,*tar.gz,*.rpm'
+    else
+        download_files='*.log,*.json,*.yaml,*.conf'
+    fi
+
+    echo "Start downloading logs/images from EC2 ($jenkins_server_public_ip) to $local_log_folder ..."
+    wget -q --no-check-certificate --no-parent --recursive --relative --level=3 --no-directories -P "$local_log_folder" -A "$download_files" "$logs_url"
     ls -la "$local_log_folder"
+    echo "Done!"
 }
 
 function check_test_result() {
@@ -436,7 +447,7 @@ ${build_options} \
 --postprocess_args=RSYNC_DEST_DIR=${RSYNC_DEST_DIR},REPORT_SERVER=${REPORT_SERVER},HTTP_ROOT=http://${jenkins_server_public_ip} \
 --jenkins https://${jenkins_server_public_ip} \
 --test ${test_suite} \
---test_args=LAVA_SERVER=${lava_server_ip},RETRY=1,LAVA_AUTH_TOKEN=${lava_auth_token},TEST_DEVICE=${test_device}"
+--test_args=LAVA_SERVER=${lava_server_ip},RETRY=0,LAVA_AUTH_TOKEN=${lava_auth_token},TEST_DEVICE=${test_device}"
 
 echo ========= WRIGEL job submit ==========
 echo -e "$jenkins_job_submit_cmd" | sed 's/--/\\\n--/g'
@@ -444,6 +455,14 @@ echo ======================================
 
 #show_sleep_progress $i 60
 ssh -i wrigel-server.pem -o "StrictHostKeyChecking no" ubuntu@${jenkins_server_public_ip} "$jenkins_job_submit_cmd"
+show_sleep_progress $i 30
+
+# check if jenkins server is ready to start
+check_jenkins_home
+if [[ "$ret" == '1' ]]; then
+    echo "Failed to submit a jenkins job, resubmit it"
+    ssh -i wrigel-server.pem -o "StrictHostKeyChecking no" ubuntu@${jenkins_server_public_ip} "$jenkins_job_submit_cmd"
+fi
 
 echo "==========Test Started: $timestamp==========="
 
@@ -490,5 +509,11 @@ insert_key_to_json "$test_stat_file" aws price_per_hour "$ec2_pricing"
 insert_key_to_json "$test_stat_file" aws time_in_min "$duration"
 insert_key_to_json "$test_stat_file" aws cost "$price"
 
+if [[ "$test_device" == 'remote' ]]; then
+    touch "$local_log_folder"/need-runtime-test
+else
+    insert_key_to_json "$test_stat_file" test_info test_images "$local_log_folder_url"
+    insert_key_to_json "$test_stat_file" test_info test_report "$local_log_folder_url/lava_job_1.log"
+fi
+
 cp "$test_stat_file" "$local_log_folder"/teststats.json
-ls -la "$local_log_folder"/teststats.json

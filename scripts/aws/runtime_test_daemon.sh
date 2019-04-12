@@ -31,6 +31,20 @@ function get_es_server_public_ip() {
     fi
 }
 
+function mark_done_in_s3() {
+    echo "Replace runtime-test-in-progress with runtime-test-done in S3 ..."
+    aws s3 mv ${S3_BUCKET}/${requesting_images_folder}/runtime-test-in-progress ${S3_BUCKET}/${requesting_images_folder}/runtime-test-done
+    aws s3 ls --recursive ${S3_BUCKET}/${requesting_images_folder}
+    mv ${local_images_base_folder}/${requesting_images_folder}/runtime-test-in-progress ${local_images_base_folder}/${requesting_images_folder}/runtime-test-done
+    echo "Done!"
+}
+
+function mark_done_locally() {
+    echo "Replace need-runtime-test with runtime-test-done locally ..."
+    mv ${local_images_base_folder}/${requesting_images_folder}/need-runtime-test ${local_images_base_folder}/${requesting_images_folder}/runtime-test-done
+    echo "Done!"
+}
+
 function report() {
     local remote_report_file=/tmp/${requesting_images_folder}_teststats.json
     echo "==="
@@ -40,12 +54,6 @@ function report() {
     local report_cmd="curl -XPOST http://localhost:9200/wrigel-$(date "+%Y.%m.%d")/logs -H 'Content-Type: application/json' -d @$remote_report_file"
 
     ssh -i wrigel-server.pem  -o "StrictHostKeyChecking no" ubuntu@${ELASTICSEARCH_SERVER} "$report_cmd"
-    echo "Done!"
-
-    echo "Replace runtime-test-in-progress with runtime-test-done in S3 ..."
-    aws s3 mv ${S3_BUCKET}/${requesting_images_folder}/runtime-test-in-progress ${S3_BUCKET}/${requesting_images_folder}/runtime-test-done
-    aws s3 ls --recursive ${S3_BUCKET}/${requesting_images_folder}
-    mv ${local_images_base_folder}/${requesting_images_folder}/runtime-test-in-progress ${local_images_base_folder}/${requesting_images_folder}/runtime-test-done
     echo "Done!"
 }
 
@@ -123,9 +131,28 @@ function check_s3_quests() {
 	requesting_images_folder=$(echo ${array[3]} | sed 's/\/need-runtime-test//g')
 	echo "Requesting runtime test from: ${requesting_images_folder}"
         download_s3_images
+	mark_done_in_s3
     else
 	requesting_images_folder=''
         echo "No test request from S3!"
+    fi
+}
+
+function check_local_requests() {
+    local REQUESTS=/tmp/local_requests_${currsec}
+
+    find "$local_images_base_folder" -name need-runtime-test > "$REQUESTS"
+
+    if [ -s "$REQUESTS" ]; then
+	local request_line=$(head -n 1 $REQUESTS)
+	request_line=$(echo "$request_line" | sed 's/\/need-runtime-test//g')
+	requesting_images_folder=$(basename "$request_line")
+	echo "Requesting runtime test from: ${requesting_images_folder}"
+        submit_lava_job
+	mark_done_locally
+    else
+	requesting_images_folder=''
+        echo "No test request from $local_images_base_folder!"
     fi
 }
 
@@ -144,12 +171,21 @@ function show_sleep_progress() {
     done
 }
 
-function main() {
+function main_for_s3() {
     get_es_server_public_ip
 
     while true; do
 	echo "$(date +'%Y-%m-%d %H:%M'):"
         check_s3_quests
+	show_sleep_progress 1 60
+    done
+}
+function main() {
+    get_es_server_public_ip
+
+    while true; do
+	echo "$(date +'%Y-%m-%d %H:%M'):"
+        check_local_requests
 	show_sleep_progress 1 60
     done
 }

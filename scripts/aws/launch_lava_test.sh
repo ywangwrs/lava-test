@@ -73,7 +73,7 @@ if [ -z "$LAVA_SERVER" ]; then
 fi
 
 if [ -z "$AUTH_TOKEN" ]; then
-    AUTH_TOKEN=q9rj4ligdzodgmmlh2x2q6hbiid0cg2qakmcx7ylfjdhzqt9na4birx0fumr4w5mufjc70fdsxuqojtbxf1bflg0ik2bfducmx49un3ocbutjfootrxujmob44jsn8oc
+    AUTH_TOKEN=e6qko2fdal312f9zyai49y8sjtsz60gynn7mky3hw6daj9r4kc2c9f7ln6mwayghe4g3xfo0jiug0d0uk2g316aax3cbcaa8c5me50dykeimlkkmwdhnaap4ci6cpjz7
 fi
 
 if [ -z "$TEST_SUITE" ]; then

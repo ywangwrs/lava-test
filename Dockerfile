@@ -1,4 +1,4 @@
-FROM lavasoftware/lava-server:2019.03
+FROM lavasoftware/lava-server:2019.04
 
 ENV container docker
 
@@ -18,6 +18,10 @@ COPY jobs/samples/* /root/jobs/
 # Add device-types and devices
 ADD devices/* /etc/lava-server/dispatcher-config/devices/
 ADD device-types/* /etc/lava-server/dispatcher-config/device-types/
+
+# Temporarily fix the issue of context limitation which introduced from LAVA 2019.04
+COPY scripts/__init__.py /usr/lib/python3/dist-packages/lava_common/schemas/
+COPY scripts/schema.py /usr/lib/python3/dist-packages/lava_scheduler_app/
 
 # setup.sh run as a service
 #COPY configs/lava-test.service /lib/systemd/system/

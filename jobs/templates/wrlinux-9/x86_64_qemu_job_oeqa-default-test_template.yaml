@@ -1,0 +1,86 @@
+device_type: aws-ec2_qemu-x86_64
+
+context:
+  kernelImg: 'KERNEL_IMG'
+  rootfsImg: 'EXT4_IMG'
+
+job_name: QEMU X86_64 Linaro smoke test
+
+timeouts:
+  job:
+    minutes: 10
+  action:
+    minutes: 10
+  connection:
+    minutes: 5
+priority: medium
+visibility: public
+
+actions:
+- deploy:
+    timeout:
+      minutes: 4
+    to: tftp
+    kernel:
+      url: http://downloads.yoctoproject.org/releases/bitbake/bitbake-1.0.tar.gz
+    os: debian
+
+- boot:
+    method: minimal
+    prompts:
+      - '[a-zA-Z0-9\-\_]+@[a-zA-Z0-9\-\_]+:.*?#'
+    transfer_overlay:
+      download_command: wget google.com; wget
+      unpack_command: tar -C / -xvzf
+    timeout:
+      minutes: 6
+    connect: serial
+    auto_login:
+      login_prompt: "login:"
+      username: root
+
+- test:
+    failure_retry: 1
+    definitions:
+        - repository: 
+            metadata:
+                format: Lava-Test Test Definition 1.0
+                name: oeqa-defult-test
+                description: "Defult OEQA test"
+                os:
+                    - debian
+                scope:
+                    - functional
+                devices:
+                    - panda
+                    - panda-es
+                    - arndale
+                    - vexpress-a9
+                    - vexpress-tc2
+            install:
+                steps:
+                    - 'cd /root'
+                    - 'wget --no-check-certificate TEST_PACKAGE'
+                    - 'wget --no-check-certificate MANIFEST_FILE'
+                    - 'wget --no-check-certificate RPM_FILE'
+                    - 'tar xzf $(basename TEST_PACKAGE)'
+                    - 'ls -la'
+            run:
+                steps:
+                    - 'cd /root/wrlinux-image-glibc-std'
+                    - 'ls -la'
+                    - 'wget --no-check-certificate https://raw.githubusercontent.com/ywangwrs/lava-test/master/scripts/change_wrl9_oeqa_cfg.sh'
+                    - 'chmod 755 change_wrl9_oeqa_cfg.sh'
+                    - './change_wrl9_oeqa_cfg.sh'
+                    - './runexported.py'
+                    - 'cat results-runexported.py.log'
+            parse:
+                pattern: "(?P<test_case_id>(.*-*)) (?P<test_definition>(.*-*)) ... (?P<result>(ok|FAIL|skipped))"
+                fixupdict:
+                    ok: pass
+                    FAIL: fail
+                    skipped: skip
+          from: inline
+          name: oeqa-default-test
+          path: inline/oeqa-default-test.yaml
+

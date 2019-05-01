@@ -29,7 +29,7 @@ if [ -z "$instance_type" ]; then
 fi
 
 if [ -z "$instance_ami" ]; then
-    AMI_ID="ami-09fe2826f91dd705e"   # wrigel-lava.docker.2019.01-awscli wrlinux 10.18 base
+    AMI_ID="ami-0b403931f5e8e0cad"   # wrigel-lava.docker.2019.03 wrlinux 10.18 base
 else
     AMI_ID="$instance_ami"           # given AMI ID
 fi

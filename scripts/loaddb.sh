@@ -16,7 +16,7 @@ fi
 
 # Terminate current 'lavaserver' database and drop (delete it)
 #psql -c "SELECT pg_terminate_backend($pid)FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = 'lavaserver';" && psql -c "DROP DATABASE lavaserver;"
-pg_ctlcluster 9.6 main restart --force
+pg_ctlcluster 11 main restart --force
 dropdb lavaserver
 
 # List postgres database's again, 'lavaserver' should not exist anymore
@@ -29,4 +29,4 @@ createdb lavaserver
 psql lavaserver < lavaserver.db
 
 # Packup database folder and ready to copy it outside of docker
-tar cf 9.6.tar 9.6
+tar cf 11.tar 11

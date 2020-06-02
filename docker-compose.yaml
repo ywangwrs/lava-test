@@ -3,13 +3,14 @@ version: "3"
 services:
   lava-server:
     #image: lavasoftware/lava-server:2019.01
-    image: lava-server
+    image: lava-server:2020.05
     container_name: lava-server
     ports:
       - "8080:80"
     volumes:
       - /opt/postgresql:/var/lib/postgresql
       - /opt/lava-server:/var/lib/lava-server
+      - /opt/settings.d:/etc/lava-server/settings.d
     privileged: true
     hostname: lava-server
     networks:
@@ -17,7 +18,7 @@ services:
 
   lava-dispatcher:
     #image: lavasoftware/lava-dispatcher:2019.01
-    image: lava-dispatcher
+    image: lava-dispatcher:2020.05
     container_name: lava-dispatcher
     #privileged: true
     hostname: lava-dispatcher
@@ -29,7 +30,7 @@ services:
       - MASTER_URL=tcp://lava-server:5556
     networks:
       - lava-net
-       
+
 networks:
   lava-net:
 

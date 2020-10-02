@@ -3,7 +3,7 @@ version: "3"
 services:
   lava-server:
     #image: lavasoftware/lava-server:2019.01
-    image: lava-server:2020.05
+    image: lava-server:2020.08
     container_name: lava-server
     ports:
       - "8080:80"
@@ -18,7 +18,7 @@ services:
 
   lava-dispatcher:
     #image: lavasoftware/lava-dispatcher:2019.01
-    image: lava-dispatcher:2020.05
+    image: lava-dispatcher:2020.08
     container_name: lava-dispatcher
     #privileged: true
     hostname: lava-dispatcher
